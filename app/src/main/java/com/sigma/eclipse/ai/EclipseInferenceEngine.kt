@@ -1,4 +1,4 @@
-package com.sigma.eclipse.ai
+package com.arm.aichat.internal
 
 import android.content.Context
 import java.io.File
@@ -11,25 +11,25 @@ import java.util.concurrent.atomic.AtomicBoolean
  * The native runtime stays inside the app process. No localhost server and no
  * executable is launched from app storage.
  */
-internal class EclipseInferenceEngine private constructor(context: Context) {
+internal class InferenceEngineImpl private constructor(context: Context) {
     private val nativeLibDir = context.applicationInfo.nativeLibraryDir
     private val initialized = AtomicBoolean(false)
     private var modelPath: String? = null
 
     companion object {
         @Volatile
-        private var instance: EclipseInferenceEngine? = null
+        private var instance: InferenceEngineImpl? = null
 
-        fun getInstance(context: Context): EclipseInferenceEngine =
+        fun getInstance(context: Context): InferenceEngineImpl =
             instance ?: synchronized(this) {
-                instance ?: EclipseInferenceEngine(context.applicationContext).also { instance = it }
+                instance ?: InferenceEngineImpl(context.applicationContext).also { instance = it }
             }
     }
 
     init {
         System.loadLibrary("ai-chat")
         check(nativeLibDir.isNotBlank()) { "Native library directory is unavailable" }
-        check(init(nativeLibDir) == Unit) { "Failed to initialize llama.cpp" }
+        init(nativeLibDir)
         initialized.set(true)
     }
 
@@ -76,7 +76,7 @@ internal class EclipseInferenceEngine private constructor(context: Context) {
     fun shutdown() {
         if (initialized.compareAndSet(true, false)) {
             unloadModel()
-            shutdownNative()
+            shutdown()
         }
     }
 
@@ -87,5 +87,4 @@ internal class EclipseInferenceEngine private constructor(context: Context) {
     private external fun processUserPrompt(userPrompt: String, predictLength: Int): Int
     private external fun generateNextToken(): String?
     private external fun unload()
-    private external fun shutdownNative()
 }
