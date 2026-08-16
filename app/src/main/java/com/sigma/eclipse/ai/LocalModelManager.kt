@@ -34,8 +34,10 @@ internal class LocalModelManager(private val context: Context) {
 
     fun selectModel(): ModelSpec {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val memoryClassMb = activityManager.memoryClass
-        return if (memoryClassMb >= 8192) largeModel else smallModel
+        val info = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(info)
+        val totalRamGb = info.totalMem / (1024.0 * 1024.0 * 1024.0)
+        return if (totalRamGb >= 8.0) largeModel else smallModel
     }
 
     suspend fun ensureModel(): File = withContext(Dispatchers.IO) {
