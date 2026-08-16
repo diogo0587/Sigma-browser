@@ -73,7 +73,7 @@ internal class InferenceEngineImpl private constructor(context: Context) {
     }
 
     @Synchronized
-    fun shutdown() {
+    fun close() {
         if (initialized.compareAndSet(true, false)) {
             unloadModel()
             shutdown()
@@ -87,4 +87,5 @@ internal class InferenceEngineImpl private constructor(context: Context) {
     private external fun processUserPrompt(userPrompt: String, predictLength: Int): Int
     private external fun generateNextToken(): String?
     private external fun unload()
+    private external fun shutdown()
 }
