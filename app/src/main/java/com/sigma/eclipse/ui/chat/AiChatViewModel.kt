@@ -1,6 +1,7 @@
 package com.sigma.eclipse.ui.chat
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sigma.eclipse.ai.LLMProvider
 import com.sigma.eclipse.ai.LocalEclipseProvider
@@ -19,14 +20,14 @@ data class ChatMessage(
     val isGenerating: Boolean = false
 )
 
-class AiChatViewModel : ViewModel() {
+class AiChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
     private val _isLocalMode = MutableStateFlow(true)
     val isLocalMode: StateFlow<Boolean> = _isLocalMode.asStateFlow()
 
-    private val localProvider: LLMProvider = LocalEclipseProvider()
+    private val localProvider: LLMProvider = LocalEclipseProvider(application)
 
     fun setLocalMode(enabled: Boolean) {
         _isLocalMode.value = enabled
@@ -37,7 +38,6 @@ class AiChatViewModel : ViewModel() {
 
         val userMsg = ChatMessage(content = text, isUser = true)
         val aiMsg = ChatMessage(content = "", isUser = false, isGenerating = true)
-        
         _messages.update { it + userMsg + aiMsg }
 
         viewModelScope.launch {
@@ -46,29 +46,25 @@ class AiChatViewModel : ViewModel() {
             } else {
                 text
             }
-            
+
             try {
-                val provider = localProvider 
                 var currentText = ""
-                
-                provider.generateStream(prompt).collect { chunk ->
+                localProvider.generateStream(prompt).collect { chunk ->
                     currentText += chunk
                     _messages.update { list ->
-                        list.map { 
-                            if (it.id == aiMsg.id) it.copy(content = currentText) else it 
-                        }
+                        list.map { if (it.id == aiMsg.id) it.copy(content = currentText) else it }
                     }
                 }
-                
                 _messages.update { list ->
-                    list.map { 
-                        if (it.id == aiMsg.id) it.copy(isGenerating = false) else it 
-                    }
+                    list.map { if (it.id == aiMsg.id) it.copy(isGenerating = false) else it }
                 }
             } catch (e: Exception) {
                 _messages.update { list ->
-                    list.map { 
-                        if (it.id == aiMsg.id) it.copy(content = "Erro: ${e.message}", isGenerating = false) else it 
+                    list.map {
+                        if (it.id == aiMsg.id) it.copy(
+                            content = "Erro no Eclipse Local: ${e.message ?: e.javaClass.simpleName}",
+                            isGenerating = false
+                        ) else it
                     }
                 }
             }
@@ -80,7 +76,6 @@ class AiChatViewModel : ViewModel() {
 
         val userMsg = ChatMessage(content = "Deep Research: $topic", isUser = true)
         val aiMsg = ChatMessage(content = "", isUser = false, isGenerating = true)
-        
         _messages.update { it + userMsg + aiMsg }
 
         viewModelScope.launch {
@@ -89,24 +84,22 @@ class AiChatViewModel : ViewModel() {
                 DeepResearchEngine.conductResearch(topic).collect { chunk ->
                     currentText += chunk
                     _messages.update { list ->
-                        list.map { 
-                            if (it.id == aiMsg.id) it.copy(content = currentText) else it 
-                        }
+                        list.map { if (it.id == aiMsg.id) it.copy(content = currentText) else it }
                     }
                 }
                 _messages.update { list ->
-                    list.map { 
-                        if (it.id == aiMsg.id) it.copy(isGenerating = false) else it 
-                    }
+                    list.map { if (it.id == aiMsg.id) it.copy(isGenerating = false) else it }
                 }
             } catch (e: Exception) {
                 _messages.update { list ->
-                    list.map { 
-                        if (it.id == aiMsg.id) it.copy(content = "Erro no Deep Research: ${e.message}", isGenerating = false) else it 
+                    list.map {
+                        if (it.id == aiMsg.id) it.copy(
+                            content = "Erro no Deep Research: ${e.message ?: e.javaClass.simpleName}",
+                            isGenerating = false
+                        ) else it
                     }
                 }
             }
         }
     }
 }
-
