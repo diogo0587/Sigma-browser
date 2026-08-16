@@ -1,0 +1,6 @@
+{
+  "name": "Sigma Eclipse LLM",
+  "description": "Android port of Sigma Eclipse LLM desktop client",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
