@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - feat/eclipse-local-llm
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build-debug:
