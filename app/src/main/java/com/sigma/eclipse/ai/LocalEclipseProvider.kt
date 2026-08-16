@@ -3,6 +3,7 @@ package com.sigma.eclipse.ai
 import android.content.Context
 import com.arm.aichat.internal.InferenceEngineImpl
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
@@ -34,15 +35,19 @@ class LocalEclipseProvider(context: Context) : LLMProvider {
             systemPromptConfigured = true
         }
 
+        val tokenChannel = Channel<String>(Channel.UNLIMITED)
         launch(Dispatchers.IO) {
             try {
                 engine.generate(prompt, predictLength = 768) { token ->
-                    trySend(token)
+                    tokenChannel.trySend(token)
                 }
-                close()
             } catch (t: Throwable) {
-                close(t)
+                tokenChannel.close(t)
+                return@launch
             }
+            tokenChannel.close()
         }
+
+        for (token in tokenChannel) send(token)
     }
 }
