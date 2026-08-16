@@ -1,0 +1,6 @@
+interface:
+  display_name: "Sigma Browser"
+  short_description: "Repo-specific patterns and workflows for Sigma-browser"
+  default_prompt: "Use the Sigma-browser repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true
