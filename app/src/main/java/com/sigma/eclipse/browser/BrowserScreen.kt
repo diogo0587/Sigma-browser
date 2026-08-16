@@ -2,17 +2,29 @@ package com.sigma.eclipse.browser
 
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sigma.eclipse.ui.chat.AiChatPanel
+import com.sigma.eclipse.ui.chat.AiChatViewModel
+import com.sigma.eclipse.privacy.PrivacyEngine
+import com.sigma.eclipse.ai.ContextManager
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,6 +35,9 @@ fun BrowserScreen(
     var url by remember { mutableStateOf("https://www.google.com") }
     var webView: WebView? by remember { mutableStateOf(null) }
     var isDrawerOpen by remember { mutableStateOf(false) }
+    var isChatOpen by remember { mutableStateOf(false) }
+    
+    val chatViewModel: AiChatViewModel = viewModel()
     val scope = rememberCoroutineScope()
     
     Scaffold(
@@ -47,7 +62,7 @@ fun BrowserScreen(
                 onBack = { webView?.goBack() },
                 onForward = { webView?.goForward() },
                 onRefresh = { webView?.reload() },
-                onOpenAi = { /* Open AI Chat */ }
+                onOpenAi = { isChatOpen = true }
             )
         }
     ) { innerPadding ->
@@ -56,6 +71,16 @@ fun BrowserScreen(
                 factory = { context ->
                     WebView(context).apply {
                         webViewClient = object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView?,
+                                request: WebResourceRequest?
+                            ): WebResourceResponse? {
+                                if (request != null && PrivacyEngine.shouldBlock(request)) {
+                                    return PrivacyEngine.createEmptyResponse()
+                                }
+                                return super.shouldInterceptRequest(view, request)
+                            }
+
                             override fun doUpdateVisitedHistory(
                                 view: WebView?,
                                 urlStr: String?,
@@ -73,6 +98,34 @@ fun BrowserScreen(
                 },
                 modifier = Modifier.fillMaxSize()
             )
+            
+            // AI Chat Overlay Panel
+            AnimatedVisibility(
+                visible = isChatOpen,
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxHeight(0.8f) // Ocupa 80% da tela para o Chat
+            ) {
+                AiChatPanel(
+                    viewModel = chatViewModel,
+                    onClose = { isChatOpen = false },
+                    onSendMessage = { text, includeContext, isDeepResearch ->
+                        if (isDeepResearch) {
+                            chatViewModel.sendDeepResearch(text)
+                        } else if (includeContext && webView != null) {
+                            scope.launch {
+                                val rawText = PageExtractor.extractCleanText(webView!!)
+                                val cleanText = ContextManager.processPageContext(rawText)
+                                chatViewModel.sendMessage(text, cleanText)
+                            }
+                        } else {
+                            chatViewModel.sendMessage(text)
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -121,10 +174,10 @@ fun BrowserBottomBar(
 ) {
     BottomAppBar {
         IconButton(onClick = onBack) {
-            Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
         }
         IconButton(onClick = onForward) {
-            Icon(Icons.Filled.ArrowForward, contentDescription = "Forward")
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Forward")
         }
         IconButton(onClick = onRefresh) {
             Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
