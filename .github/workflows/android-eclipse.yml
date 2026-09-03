@@ -53,7 +53,7 @@ jobs:
       - name: Build debug APK
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx6g -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4
-        run: gradle :app:assembleDebug --no-daemon --stacktrace --build-cache
+        run: gradle :app:assembleDebug --no-daemon --stacktrace --build-cache -PdebugArm64Only=true
 
       - name: Upload debug APK artifact
         if: success()
