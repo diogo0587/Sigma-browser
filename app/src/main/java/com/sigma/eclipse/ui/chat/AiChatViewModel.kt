@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sigma.eclipse.ai.LLMProvider
-import com.sigma.eclipse.ai.LocalEclipseProvider
+import com.sigma.eclipse.ai.OpenAiCompatibleProvider
 import com.sigma.eclipse.research.DeepResearchEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,13 +24,14 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
-    private val _isLocalMode = MutableStateFlow(true)
+    private val _isLocalMode = MutableStateFlow(false)
     val isLocalMode: StateFlow<Boolean> = _isLocalMode.asStateFlow()
 
-    private val localProvider: LLMProvider = LocalEclipseProvider(application)
+    private val apiProvider: LLMProvider = OpenAiCompatibleProvider(application)
 
     fun setLocalMode(enabled: Boolean) {
-        _isLocalMode.value = enabled
+        // Kept for UI compatibility. Sigma now uses user-configured API inference only.
+        _isLocalMode.value = false
     }
 
     fun sendMessage(text: String, contextText: String? = null) {
@@ -42,14 +43,14 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
 
         viewModelScope.launch {
             val prompt = if (contextText != null) {
-                "Contexto:\n$contextText\n\nPergunta: $text"
+                "Contexto da página:\n$contextText\n\nPergunta do usuário: $text"
             } else {
                 text
             }
 
             try {
                 var currentText = ""
-                localProvider.generateStream(prompt).collect { chunk ->
+                apiProvider.generateStream(prompt).collect { chunk ->
                     currentText += chunk
                     _messages.update { list ->
                         list.map { if (it.id == aiMsg.id) it.copy(content = currentText) else it }
@@ -62,7 +63,7 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
                 _messages.update { list ->
                     list.map {
                         if (it.id == aiMsg.id) it.copy(
-                            content = "Erro no Eclipse Local: ${e.message ?: e.javaClass.simpleName}",
+                            content = "Erro na IA por API: ${e.message ?: e.javaClass.simpleName}",
                             isGenerating = false
                         ) else it
                     }
