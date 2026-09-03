@@ -54,12 +54,6 @@ android {
       keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
       keyPassword = System.getenv("KEY_PASSWORD")
     }
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
-    }
   }
 
   buildTypes {
@@ -71,7 +65,6 @@ android {
     }
     debug {
       isMinifyEnabled = false
-      signingConfig = signingConfigs.getByName("debugConfig")
     }
   }
 
