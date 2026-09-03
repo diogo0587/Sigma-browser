@@ -12,7 +12,6 @@ plugins {
 android {
   namespace = "com.sigma.eclipse"
   compileSdk = 36
-  ndkVersion = "29.0.14206865"
 
   defaultConfig {
     applicationId = "com.sigma.eclipse"
@@ -22,28 +21,6 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-    ndk {
-      val debugArm64Only = providers.gradleProperty("debugArm64Only").isPresent
-      abiFilters.addAll(
-        if (debugArm64Only) listOf("arm64-v8a")
-        else listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-      )
-    }
-
-    externalNativeBuild {
-      cmake {
-        cppFlags.addAll(listOf("-std=c++17", "-fexceptions", "-frtti"))
-        cFlags.addAll(listOf("-std=c11"))
-      }
-    }
-  }
-
-  externalNativeBuild {
-    cmake {
-      path = file("src/main/cpp/CMakeLists.txt")
-      version = "3.31.6"
-    }
   }
 
   signingConfigs {
