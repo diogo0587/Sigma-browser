@@ -11,7 +11,7 @@ plugins {
 
 android {
   namespace = "com.sigma.eclipse"
-  compileSdk = 35
+  compileSdk = 36
   ndkVersion = "29.0.14206865"
 
   defaultConfig {
@@ -38,7 +38,7 @@ android {
   externalNativeBuild {
     cmake {
       path = file("src/main/cpp/CMakeLists.txt")
-      version = "3.22.1"
+      version = "3.31.6"
     }
   }
 
