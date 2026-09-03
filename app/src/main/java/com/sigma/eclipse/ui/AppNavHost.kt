@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.sigma.eclipse.browser.BrowserScreen
+import com.sigma.eclipse.ui.settings.SettingsScreen
 
 @Composable
 fun AppNavHost() {
@@ -17,7 +18,7 @@ fun AppNavHost() {
             )
         }
         composable("settings") {
-            // SettingsScreen(onNavigateBack = { navController.popBackStack() })
+            SettingsScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }
