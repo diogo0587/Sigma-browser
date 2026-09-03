@@ -1,9 +1,9 @@
 package com.sigma.eclipse.ai
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -13,22 +13,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/**
- * Calls OpenAI-compatible chat-completions APIs directly from the device.
- * The user owns and supplies the credential.
- */
+/** Direct client for user-owned OpenAI-compatible APIs. */
 class OpenAiCompatibleProvider(context: Context) : LLMProvider {
     private val appContext = context.applicationContext
     private val keyStore = SecureApiKeyStore(appContext)
     private val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(120, TimeUnit.SECONDS)
+        .readTimeout(180, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS)
         .build()
 
     override suspend fun generateStream(prompt: String, systemPrompt: String?): Flow<String> = flow {
         val config = AiProviderConfig.load(appContext)
-        val apiKey = keyStore.get()
+        val apiKey = keyStore.get()?.trim()
             ?: throw IllegalStateException("Configure sua API Key em Configurações > Inteligência Artificial.")
         require(config.endpoint.startsWith("https://")) { "O endpoint da IA deve usar HTTPS." }
         require(config.model.isNotBlank()) { "Informe um modelo de IA." }
@@ -40,15 +37,16 @@ class OpenAiCompatibleProvider(context: Context) : LLMProvider {
         messages.put(JSONObject().put("role", "user").put("content", prompt))
 
         val body = JSONObject()
-            .put("model", config.model)
+            .put("model", config.model.trim())
             .put("messages", messages)
-            .put("temperature", 0.4)
+            .put("temperature", 0.25)
+            .put("max_tokens", 4096)
             .put("stream", false)
             .toString()
             .toRequestBody(JSON_MEDIA_TYPE)
 
         val request = Request.Builder()
-            .url(config.endpoint)
+            .url(config.endpoint.trim())
             .header("Authorization", "Bearer $apiKey")
             .header("Accept", "application/json")
             .post(body)
@@ -58,8 +56,9 @@ class OpenAiCompatibleProvider(context: Context) : LLMProvider {
             client.newCall(request).execute().use { response ->
                 val responseBody = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    val detail = runCatching { JSONObject(responseBody).optString("detail") }
-                        .getOrDefault("")
+                    val json = runCatching { JSONObject(responseBody) }.getOrNull()
+                    val detail = json?.optString("detail").orEmpty()
+                        .ifBlank { json?.optJSONObject("error")?.optString("message").orEmpty() }
                     val suffix = if (detail.isNotBlank()) ": $detail" else ""
                     throw IllegalStateException("API ${response.code}$suffix")
                 }
@@ -69,9 +68,11 @@ class OpenAiCompatibleProvider(context: Context) : LLMProvider {
 
         val json = JSONObject(responseText)
         val choices = json.optJSONArray("choices")
-        val first = choices?.optJSONObject(0)
-        val message = first?.optJSONObject("message")
-        val content = message?.optString("content").orEmpty()
+            ?: throw IllegalStateException("Resposta da API sem 'choices'.")
+        val first = choices.optJSONObject(0)
+            ?: throw IllegalStateException("Resposta da API sem escolha de resposta.")
+        val message = first.optJSONObject("message")
+        val content = message?.optString("content").orEmpty().trim()
         if (content.isBlank()) {
             throw IllegalStateException("A API retornou uma resposta vazia.")
         }
@@ -79,7 +80,7 @@ class OpenAiCompatibleProvider(context: Context) : LLMProvider {
     }
 
     suspend fun testConnection(): Result<String> = runCatching {
-        generateStream("Responda somente: OK").collect { }
+        generateStream("Responda somente: OK", "Você é um teste de conectividade. Seja extremamente breve.").collect { }
         "Conexão funcionando"
     }
 
