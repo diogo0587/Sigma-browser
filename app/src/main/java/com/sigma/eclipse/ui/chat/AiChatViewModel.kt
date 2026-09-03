@@ -5,7 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sigma.eclipse.ai.LLMProvider
 import com.sigma.eclipse.ai.OpenAiCompatibleProvider
-import com.sigma.eclipse.research.DeepResearchEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,18 +55,9 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
                         list.map { if (it.id == aiMsg.id) it.copy(content = currentText) else it }
                     }
                 }
-                _messages.update { list ->
-                    list.map { if (it.id == aiMsg.id) it.copy(isGenerating = false) else it }
-                }
+                finishMessage(aiMsg.id, currentText)
             } catch (e: Exception) {
-                _messages.update { list ->
-                    list.map {
-                        if (it.id == aiMsg.id) it.copy(
-                            content = "Erro na IA por API: ${e.message ?: e.javaClass.simpleName}",
-                            isGenerating = false
-                        ) else it
-                    }
-                }
+                failMessage(aiMsg.id, "Erro na IA por API: ${e.message ?: e.javaClass.simpleName}")
             }
         }
     }
@@ -81,26 +71,35 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
 
         viewModelScope.launch {
             try {
+                val system = "Você é o modo Deep Research do Sigma Browser. Produza uma análise estruturada, " +
+                    "separe fatos de inferências, destaque limitações e indique que a resposta depende das fontes " +
+                    "ou contexto fornecidos. Não invente fontes nem alegue ter navegado na web se isso não ocorreu."
                 var currentText = ""
-                DeepResearchEngine.conductResearch(topic).collect { chunk ->
+                apiProvider.generateStream(
+                    prompt = "Faça uma análise aprofundada do seguinte tema:\n$topic",
+                    systemPrompt = system
+                ).collect { chunk ->
                     currentText += chunk
                     _messages.update { list ->
                         list.map { if (it.id == aiMsg.id) it.copy(content = currentText) else it }
                     }
                 }
-                _messages.update { list ->
-                    list.map { if (it.id == aiMsg.id) it.copy(isGenerating = false) else it }
-                }
+                finishMessage(aiMsg.id, currentText)
             } catch (e: Exception) {
-                _messages.update { list ->
-                    list.map {
-                        if (it.id == aiMsg.id) it.copy(
-                            content = "Erro no Deep Research: ${e.message ?: e.javaClass.simpleName}",
-                            isGenerating = false
-                        ) else it
-                    }
-                }
+                failMessage(aiMsg.id, "Erro no Deep Research por API: ${e.message ?: e.javaClass.simpleName}")
             }
+        }
+    }
+
+    private fun finishMessage(id: String, content: String) {
+        _messages.update { list ->
+            list.map { if (it.id == id) it.copy(content = content, isGenerating = false) else it }
+        }
+    }
+
+    private fun failMessage(id: String, message: String) {
+        _messages.update { list ->
+            list.map { if (it.id == id) it.copy(content = message, isGenerating = false) else it }
         }
     }
 }
