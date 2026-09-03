@@ -1,26 +1,26 @@
-name: Android Eclipse build
+name: Sigma AI Browser Android build
 
 on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - feat/eclipse-local-llm
   pull_request:
     branches:
       - main
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: android-build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-debug:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    
+
     permissions:
       contents: read
-      checks: write
 
     steps:
       - name: Checkout code
@@ -33,7 +33,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
+
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.3.1'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -43,42 +47,30 @@ jobs:
           sdkmanager "platform-tools" \
                      "platforms;android-35" \
                      "build-tools;35.0.0" \
-                     "cmake;3.22.1" \
+                     "cmake;3.31.6" \
                      "ndk;29.0.14206865"
-
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
-
-      - name: Restore Gradle cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
 
       - name: Build debug APK
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx6g -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace --build-cache
+        run: gradle :app:assembleDebug --no-daemon --stacktrace --build-cache
 
       - name: Upload debug APK artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: sigma-browser-eclipse-debug-${{ github.run_number }}
+          name: sigma-ai-browser-debug-${{ github.run_number }}
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
           if-no-files-found: error
 
-      - name: Upload build logs on failure
+      - name: Upload build reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs-${{ github.run_number }}
+          name: sigma-ai-browser-build-reports-${{ github.run_number }}
           path: |
             app/build/reports
             build/reports
           retention-days: 7
+          if-no-files-found: ignore
