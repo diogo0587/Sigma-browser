@@ -24,13 +24,19 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     ndk {
-      abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+      abiFilters.addAll(listOf("arm64-v8a"))
     }
 
     externalNativeBuild {
       cmake {
         cppFlags.addAll(listOf("-std=c++17", "-fexceptions", "-frtti"))
         cFlags.addAll(listOf("-std=c11"))
+      }
+    }
+
+    externalNativeBuild {
+      cmake {
+        arguments.addAll(listOf("-DGGML_NATIVE=OFF"))
       }
     }
   }
