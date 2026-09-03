@@ -34,12 +34,11 @@ fun BrowserScreen(
 ) {
     var url by remember { mutableStateOf("https://www.google.com") }
     var webView: WebView? by remember { mutableStateOf(null) }
-    var isDrawerOpen by remember { mutableStateOf(false) }
     var isChatOpen by remember { mutableStateOf(false) }
-    
+
     val chatViewModel: AiChatViewModel = viewModel()
     val scope = rememberCoroutineScope()
-    
+
     Scaffold(
         topBar = {
             BrowserTopBar(
@@ -52,9 +51,7 @@ fun BrowserScreen(
                     }
                     webView?.loadUrl(url)
                 },
-                onOpenDrawer = {
-                    isDrawerOpen = true
-                }
+                onOpenSettings = onNavigateToSettings
             )
         },
         bottomBar = {
@@ -98,15 +95,14 @@ fun BrowserScreen(
                 },
                 modifier = Modifier.fillMaxSize()
             )
-            
-            // AI Chat Overlay Panel
+
             AnimatedVisibility(
                 visible = isChatOpen,
                 enter = slideInVertically(initialOffsetY = { it }),
                 exit = slideOutVertically(targetOffsetY = { it }),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .fillMaxHeight(0.8f) // Ocupa 80% da tela para o Chat
+                    .fillMaxHeight(0.8f)
             ) {
                 AiChatPanel(
                     viewModel = chatViewModel,
@@ -135,7 +131,7 @@ fun BrowserScreen(
 fun BrowserTopBar(
     currentUrl: String,
     onUrlSubmit: (String) -> Unit,
-    onOpenDrawer: () -> Unit
+    onOpenSettings: () -> Unit
 ) {
     var text by remember(currentUrl) { mutableStateOf(currentUrl) }
 
@@ -158,8 +154,8 @@ fun BrowserTopBar(
             )
         },
         actions = {
-            IconButton(onClick = onOpenDrawer) {
-                Icon(Icons.Filled.Menu, contentDescription = "Menu")
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Filled.Settings, contentDescription = "Configurações")
             }
         }
     )
